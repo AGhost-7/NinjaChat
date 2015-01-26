@@ -38,9 +38,8 @@ object Token {
 	/**
 	 * Generates a new unique token for the user.
 	 */
-	def generate(user: User)(implicit request: Request[AnyContent]): Future[Token] = {
+	def generate(user: User, ip: String): Future[Token] = {
 		val _id = BSONObjectID.generate.stringify
-		val ip = request.remoteAddress
 		val token = Token(_id, user._id, ip)
 		collection.insert(token).map { lastError =>
 			token

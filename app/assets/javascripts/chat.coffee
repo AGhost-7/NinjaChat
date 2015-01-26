@@ -1,4 +1,4 @@
-$ () ->
+do ->
 	
 	urlArgs = ninja
 		.tokens

@@ -3,7 +3,7 @@ package models
 import play.api.libs.json._
 
 import play.api.mvc.WebSocket.FrameFormatter
-
+import play.api.libs.functional.syntax._
 
 // Notes...
 // User can request:
@@ -26,9 +26,10 @@ sealed trait ProtocolMsg
 object ProtocolMsg {
 	
 	/**
-	 * Part 2 of the Reads composition. This will return a reads object which
+	 * Part 2 of the Reads. This will return a reads object which
 	 * checks if the code is correct.
 	 */
+	
 	def readCode(code: String) = Reads[JsValue] { js =>
 		(js \ "code").asOpt[String] match {
 			case Some(jsCode) => 
@@ -42,12 +43,14 @@ object ProtocolMsg {
 	/**
 	 * Part 2 of the Writes. Adds the code to the json object for the client.
 	 */
-	def writeCode(code: String) = Writes[JsValue] { _ match {
+	
+	def writeCode(code: String): JsValue => JsValue = { js => 
+		js match {
 			case JsObject(seq) => JsObject(seq :+ ("code", JsString(code)))
-			case other => other
+			case _ => js
 		}
 	}
-	
+		
 	/**
 	 * Server-to-client writes
 	 */
@@ -58,11 +61,14 @@ object ProtocolMsg {
 	val notificationWrite = 
 		Json.writes[Notification].transform(writeCode("notification"))
 		
-	val protocolErrorWrite = Json.writes[ProtocolError]
+	val protocolErrorWrite = //Json.writes[ProtocolError]
 		Json.writes[ProtocolError].transform(writeCode("error"))
 		
-	val protocolOkWrite = Json.writes[ProtocolOk]
+	val protocolOkWrite = //Json.writes[ProtocolOk]
 		Json.writes[ProtocolOk].transform(writeCode("ok"))
+		
+	val userIdentityWrite =
+		Json.writes[UserIdentity].transform(writeCode("identity"))
 	
 	/**
 	 * Client-to-server reads
@@ -83,10 +89,14 @@ object ProtocolMsg {
 	val roomReqRead = 
 		Json.reads[RoomReq].compose(readCode("room"))
 	
+	val identityReqRead = 
+		Json.reads[IdentityReq].compose(readCode("identity"))
+	
 	/**
 	 * This is the final formatter which will be executed automatically at the
 	 * end/beginning of the pipe.
 	 */
+		
 	implicit def protocolMsgFormat: Format[ProtocolMsg] = Format(
 			(__ \ "code").read[String].flatMap {
 			case "registration" => registrationReqRead.map(identity)
@@ -94,13 +104,15 @@ object ProtocolMsg {
 			case "logout" => logoutReqRead.map(identity)
 			case "chat-message" => chatReqRead.map(identity)
 			case "room" => roomReqRead.map(identity)
+			case "identity" => identityReqRead.map(identity)
 			case _ => Reads { _ => JsError("Format is invalid.") }
 		},
 		Writes {
 			case nt: Notification => notificationWrite.writes(nt)
 			case msg: UserMessage => userMessageWrite.writes(msg)
 			case err: ProtocolError => protocolErrorWrite.writes(err)
-			case ok: ProtocolOk => protocolOkWrite.writes(ok)
+			case ok: ProtocolOk => println("Writing ok...");protocolOkWrite.writes(ok)
+			case id: UserIdentity => userIdentityWrite.writes(id)
 			case _ => Json.obj("error" -> "Json writes not implemented.")
 		}
 	)
@@ -133,6 +145,8 @@ case class RoomReq(tokens: List[String], name: String) extends ProtocolMsg
 
 case class ChatReq(tokens: List[String], room: String, content: String) extends ProtocolMsg 
 
+case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtocolMsg
+
 /**
  * Server-to-client definitions.
  */
@@ -142,9 +156,11 @@ case class UserMessage(userName: String, room: String, content: String) extends 
 // e.g., User "x" logs into the room.
 case class Notification(room: String, content: String) extends ProtocolMsg 
 
-case class ProtocolError(reason: String) extends ProtocolMsg 
+//Resource will correspond to the code the client sent. Reason
+//is the exact GUI response that the user will see.
+case class ProtocolError(resource: String, reason: String) extends ProtocolMsg 
 
-// Ok response might return some result, for example a token after logging in.
-case class ProtocolOk(content: Option[String] = None) extends ProtocolMsg
+//Ok response will return a result, for example a token for the login.
+case class ProtocolOk(resource: String, content: String) extends ProtocolMsg
 
-
+case class UserIdentity(name: String, tokens: Option[List[String]] = None) extends ProtocolMsg
