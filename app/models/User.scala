@@ -21,6 +21,11 @@ case class User(_id: String, name: String, password: String)
 object User {
 	
 	/**
+	 * This is the name used if the user isn't logged in.
+	 */
+	val anon = "*Anonymous*"
+		
+	/**
 	 * JSON formatter
 	 */
 	implicit val jsonFormat = Json.format[User]
@@ -40,8 +45,8 @@ object User {
 			Some("Your name is using illegal characters.")
 		else if(!password.matches("""[A-z0-9,_`'"$%#@!^&*()-]+"""))
 			Some("You password is using illegal characters.")
-		else if(name == "*Anonymous*")
-			Some("You cannot use the reserved name *Anonymous*.")
+		else if(name == anon)
+			Some(s"You cannot use the reserved name $anon.")
 		else
 			None
 	}
@@ -57,8 +62,7 @@ object User {
 	 * process is done in a non-blocking IO manner. Strings should be the token
 	 * strings given by the clients.
 	 */
-	def fromTokens(strings: List[String], ip: String): Future[Option[User]] ={
-		
+	def fromTokens(strings: List[String], ip: String): Future[Option[User]] = {
 		if(strings.isEmpty) {
 			Future.successful(None)
 		} else {
@@ -88,6 +92,17 @@ object User {
 			
 			ftUser
 		}
+	}
+	
+	/**
+	 * Returns the name of the user or fallbacks to the current designated 
+	 * "anonymous" default name.
+	 */
+	def nameOrAnon(strings: List[String], ip: String): Future[String] = {
+		fromTokens(strings, ip)
+			.map { optUser =>
+				optUser.map{ _.name }.getOrElse(anon)
+			}
 	}
 	
 	/**

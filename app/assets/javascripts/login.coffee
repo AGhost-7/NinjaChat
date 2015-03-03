@@ -2,6 +2,10 @@ do ->
 	
 	$inName = $('#nav-in-name')
 	$inPw = $('#nav-in-pw')
+	$aLogin = $('#login-nav')
+	$aLogout = $('#logout-nav')
+	$aRegister = $('#register-nav')
+	
 	formState = ''
 	
 	###
@@ -11,46 +15,30 @@ do ->
 	ninja.userName.listen (newName) ->
 		if newName == undefined
 			$('#name-span').text('newcomer')
-			logout.nav(false)
-			login.nav(true)
-			register.nav(true)
+			$aLogout.parent().addClass('hidden')
+			$aLogin.parent().removeClass('hidden')
+			$aRegister.parent().removeClass('hidden')
 		else
 			$('#name-span').text(newName)
-			logout.nav(true)
-			login.nav(false)
-			register.nav(false)
+			$aLogout.parent().removeClass('hidden')
+			$aLogin.parent().addClass('hidden')
+			$aRegister.parent().addClass('hidden')
 		
 	###
 		~~ UI event handlers ~~
 	###
 	
-	class NavElem
-		constructor: (@$a) ->
-			
-		nav: (bool) ->
-			if(bool)
-				@$a.parent().removeClass('hidden')
-			else
-				@$a.parent().addClass('hidden')
-				
-				
-	login = new NavElem($('#login-nav'))
-	
-	register = new NavElem($('#register-nav'))
-	
-	logout = new NavElem($('#logout-nav'))
-	
-	login.$a.click (e) -> 
+	$aLogin.click (e) -> 
 		navbarAlert.clear()
 		formState = 'login'
 		
-	register.$a.click (e) -> 
+	$aRegister.click (e) -> 
 		navbarAlert.clear()
 		formState = 'registration'
 	
-	logout.$a.click (e) ->
+	$aLogout.click (e) ->
 		ninja.socket.send(
-			code: "logout",
+			resource: "logout",
 			tokens: ninja.tokens.get()
 		)
 		e.preventDefault()
@@ -73,7 +61,7 @@ do ->
 	
 	$('#nav-ok-btn').click (e) ->
 		ninja.socket.send(
-			code: formState,
+			resource: formState,
 			name: $inName.val(),
 			password: $inPw.val()
 		)
@@ -114,13 +102,13 @@ do ->
 	# that it currently has. Client has to verify on its own what it can 
 	# do with its stored state.
 	
-	ninja.socket.on("identity", (obj) -> 
+	ninja.socket.on('identity','ok', (obj) -> 
 		ninja.userName.set(obj.name)
 	)
 	
 	ninja.socket.onopen( ->
 		ninja.socket.send(
-			code: "identity",
+			resource: "identity",
 			tokens: ninja.tokens.get()
 		)
 	)

@@ -1,33 +1,35 @@
-###
-	A couple of abstractions...
-###
-
 do ->
+	
+	ninja = window.ninja = {}
+	
+	###
+		~~ WebSocket Abstractions ~~
+	###
+
 	sock = new WebSocket("ws://" + location.host + "/socket")
+	
+	lastMessageSent = undefined
+	
+	socketUnload = false
 	
 	# Primitive socket handlers
 	sockHandlers = 
 		"onopen": [],
+		"onclose":[],
 		"onerror": [], 
 		"onmessage":[]
 	
 	# message handlers
 	callbacks = {}
 	
-	ninja = window.ninja = {}
-	
 	ninja.socket = 
 		on: (resource, code, callback) ->
-			if arguments.length == 2
-				cde = arguments[0]
-				cback = arguments[1]
-				callbacks[cde] = callbacks[code] || []
-				callbacks[cde].push(cback)
-			else if arguments.length == 3
-				callbacks[code] = callbacks[code] || {}
-				callbacks[code][resource] = callbacks[code][resource] || []
-				callbacks[code][resource].push(callback)
+			callbacks[resource] = callbacks[resource] || {}
+			callbacks[resource][code] = callbacks[resource][code] || []
+			callbacks[resource][code].push(callback)
+			
 		send: (obj) ->
+			lastMessageSent = obj
 			sock.send(JSON.stringify(obj))
 			
 	for key of sockHandlers
@@ -35,6 +37,41 @@ do ->
 			ninja.socket[key] = (callback) ->
 				sockHandlers[key].push(callback)
 			
+	# TODO: get a proper GUI message added to this.
+	sock.onerror = (error) ->
+		alert('Oh noes! A colony of monkeys just ran away with the socket connection.')
+		callback(error) for callback in sockHandlers.onerror
+	
+	sock.onclose = (event) ->
+		if !socketUnload
+			alert('Oh noes! A colony of monkeys just ran away with the socket connection.')
+		callback(event) for callback in sockHandlers.onclose
+	
+	sock.onmessage = (event) ->
+		obj = JSON.parse(event.data)
+		console.log('socket message received')
+		console.log(obj)
+		if obj.resource && callbacks[obj.resource]
+			resourceCBs = callbacks[obj.resource]
+			if obj.code && resourceCBs[obj.code]
+				callback(obj) for callback in resourceCBs[obj.code]
+			
+		# and now the primitive event handlers.
+		callback(event) for callback in sockHandlers.onmessage
+		
+	sock.onopen = (e) ->
+		callback(e) for callback in sockHandlers.onopen
+		
+	window.onbeforeunload = (e) ->
+		# Don't want the error message popping up if its intentionally 
+		# closed by the client.
+		socketUnload = true
+		sock.close()
+		
+	###
+		~~ Misc. Abstractions ~~
+	###
+	
 	ninja.userName = do ->
 		val = undefined
 		funcs = []
@@ -68,28 +105,4 @@ do ->
 			localStorage.setItem("tokens", "[]")
 		
 		self
-	
-	# TODO: get a proper GUI message added to this.
-	sock.onerror = (error) ->
-		alert('Oh noes! A colony of monkeys just ran away with the socket connection.')
-		callback(error) for callback in sockHandlers.onerror
-		
-	sock.onmessage = (event) ->
-		obj = JSON.parse(event.data)
-		if obj.code && callbacks[obj.code]
-			atCode = callbacks[obj.code]
-			if obj.resource && atCode[obj.resource]
-				callback(obj) for callback in atCode[obj.resource]
-			else if Array.isArray(atCode)
-				callback(obj) for callback in atCode
-			
-		# and now the primitive event handlers.
-		callback(event) for callback in sockHandlers.onmessage
-		
-	sock.onopen = (e) ->
-		callback(e) for callback in sockHandlers.onopen
-		
-		
-	window.onbeforeunload = (e) ->
-		sock.close()
 	

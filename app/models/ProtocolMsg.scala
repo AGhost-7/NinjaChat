@@ -25,72 +25,87 @@ sealed trait ProtocolMsg
 
 object ProtocolMsg {
 	
-	/**
-	 * Part 2 of the Reads. This will return a reads object which
-	 * checks if the code is correct.
-	 */
-	
-	def readCode(code: String) = Reads[JsValue] { js =>
-		(js \ "code").asOpt[String] match {
-			case Some(jsCode) => 
-				if(code == jsCode) JsSuccess(js)
-				else JsError("Protocol code mismatch.")
-			case None => 
-				JsError("Protocol requires a code field.")
-		}
-	}
-	
-	/**
-	 * Part 2 of the Writes. Adds the code to the json object for the client.
-	 */
-	
-	def writeCode(code: String): JsValue => JsValue = { js => 
-		js match {
-			case JsObject(seq) => JsObject(seq :+ ("code", JsString(code)))
-			case _ => js
-		}
-	}
+	implicit class readsAdhocks[A](rd: Reads[A]){
+		def typeHint(kv: (String, String)) = {
+			val (field, value) = kv
+			
+			val rd2 = Reads[JsValue] { js =>
+				(js \ field).asOpt[String] match {
+					case Some(v) =>
+						if(v == value) JsSuccess(js)
+						else JsError("Type hint mismatch.")
+					case None =>
+						JsError("Type hint not defined.")
+				}	
+			}
 		
+			rd.compose(rd2)
+		}
+	}
+	
+	implicit class writesAdhocks[A](wr: OWrites[A]){
+		def typeHint(kvs: (String, String)*) = wr.transform { js: JsValue =>
+			js match {
+				case JsObject(seq) => 
+					val merged = seq ++ kvs.map { case(k, v) => (k, JsString(v)) }
+					
+					JsObject(merged)
+				case other => other
+			}
+		}
+	}
+	
 	/**
 	 * Server-to-client writes
 	 */
 	
-	val userMessageWrite = 
-		Json.writes[UserMessage].transform(writeCode("chat-message"))
+	val userMessageWrite = Json
+			.writes[UserMessage]
+			.typeHint("resource" -> "user-message", "code" -> "ok")
 		
-	val notificationWrite = 
-		Json.writes[Notification].transform(writeCode("notification"))
+	val notificationWrite = Json
+			.writes[Notification]
+			.typeHint("resource" -> "notification", "code" -> "ok")
 		
-	val protocolErrorWrite = //Json.writes[ProtocolError]
-		Json.writes[ProtocolError].transform(writeCode("error"))
+	val protocolErrorWrite = Json
+			.writes[ProtocolError]
+			.typeHint("code" -> "error")
 		
-	val protocolOkWrite = //Json.writes[ProtocolOk]
-		Json.writes[ProtocolOk].transform(writeCode("ok"))
+	val protocolOkWrite = Json
+			.writes[ProtocolOk]
+			.typeHint("code" -> "ok")
 		
-	val userIdentityWrite =
-		Json.writes[UserIdentity].transform(writeCode("identity"))
-	
+	val userIdentityWrite = Json
+			.writes[UserIdentity]
+			.typeHint("resource" -> "identity", "code" -> "ok")
+			
 	/**
 	 * Client-to-server reads
 	 */
 	
-	val registrationReqRead =
-		Json.reads[RegistrationReq].compose(readCode("registration"))
+	val registrationReqRead = Json
+			.reads[RegistrationReq]
+			.typeHint("resource" -> "registration")
 		
-	val loginReqRead = 
-		Json.reads[LoginReq].compose(readCode("login"))
+	val loginReqRead = Json
+			.reads[LoginReq]
+			.typeHint("resource" -> "login")
 		
-	val logoutReqRead = 
-		Json.reads[LogoutReq].compose(readCode("logout"))
+	val logoutReqRead = Json
+			.reads[LogoutReq]
+			.typeHint("resource" -> "logout")
 		
-	val chatReqRead = 
-		Json.reads[ChatReq].compose(readCode("chat-message"))
+	val chatReqRead = Json
+			.reads[ChatReq]
+			.typeHint("resource" -> "chat-message")
 		
-	val roomReqRead = 
-		Json.reads[RoomReq].compose(readCode("room"))
+	val roomReqRead = Json
+			.reads[RoomReq]
+			.typeHint("resource" -> "room")
 	
-	val identityReqRead = 
-		Json.reads[IdentityReq].compose(readCode("identity"))
+	val identityReqRead = Json
+			.reads[IdentityReq]
+			.typeHint("resource" -> "identity")
 	
 	/**
 	 * This is the final formatter which will be executed automatically at the
@@ -98,13 +113,17 @@ object ProtocolMsg {
 	 */
 		
 	implicit def protocolMsgFormat: Format[ProtocolMsg] = Format(
-			(__ \ "code").read[String].flatMap {
+			(__ \ "resource").read[String].flatMap {
 			case "registration" => registrationReqRead.map(identity)
 			case "login" => loginReqRead.map(identity)
 			case "logout" => logoutReqRead.map(identity)
 			case "chat-message" => chatReqRead.map(identity)
 			case "room" => roomReqRead.map(identity)
 			case "identity" => identityReqRead.map(identity)
+			case "ping" => Reads[ProtocolMsg] { _ => JsSuccess(Ping) }
+			case "disconnect" => Reads[ProtocolMsg] { js =>
+				JsSuccess(DisconnectReq((js \ "room").asOpt[String]))
+			}
 			case _ => Reads { _ => JsError("Format is invalid.") }
 		},
 		Writes {
@@ -113,6 +132,12 @@ object ProtocolMsg {
 			case err: ProtocolError => protocolErrorWrite.writes(err)
 			case ok: ProtocolOk => println("Writing ok...");protocolOkWrite.writes(ok)
 			case id: UserIdentity => userIdentityWrite.writes(id)
+			case Ping => 
+				val seq = Seq(
+					("resource", JsString("ping")),
+					("code", JsString("ok"))
+				)
+				JsObject(seq)
 			case _ => Json.obj("error" -> "Json writes not implemented.")
 		}
 	)
@@ -128,12 +153,18 @@ object ProtocolMsg {
 	
 }
 
-/**
- * Client-to-server definitions.
+/** Two way objects...
+ */
+case object Ping extends ProtocolMsg
+
+/** Client-to-server definitions.
  * 
  * Implicit formats are stored in the Implicits package object in the Models 
  * file.
  */
+
+// If Option is None, then disconnect from all rooms.
+case class DisconnectReq(room: Option[String]) extends ProtocolMsg
 
 case class RegistrationReq(name: String, password: String) extends ProtocolMsg 
 
@@ -141,14 +172,13 @@ case class LoginReq(name: String, password: String) extends ProtocolMsg
 
 case class LogoutReq(tokens: List[String]) extends ProtocolMsg 
 
-case class RoomReq(tokens: List[String], name: String) extends ProtocolMsg 
+case class RoomReq(tokens: List[String], room: String) extends ProtocolMsg 
 
 case class ChatReq(tokens: List[String], room: String, content: String) extends ProtocolMsg 
 
 case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtocolMsg
 
-/**
- * Server-to-client definitions.
+/** Server-to-client definitions.
  */
 
 case class UserMessage(userName: String, room: String, content: String) extends ProtocolMsg

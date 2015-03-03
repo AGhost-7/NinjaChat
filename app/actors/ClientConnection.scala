@@ -2,21 +2,25 @@ package actors
 
 import akka.actor.{Props, ActorRef, Actor}
 
+import play.api.Play.current
+
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
+import play.api.libs.concurrent.Akka
 
 import org.mindrot.jbcrypt.BCrypt
 
 import models._
 
 class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
+	
+	
 	def receive = {
 		
 		/**
 		 * Client has requested a registration for a new account.
 		 */
 		case RegistrationReq(name, password) => 
-			println("requesting registration")
 			User.findError(name, password) match {
 				case Some(error) => 
 					upstream ! ProtocolError("registration", error)
@@ -26,10 +30,8 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 								for {
 									user <- User.insert(name, password)
 									token <- Token.generate(user, ip)
-								} yield {
-									// TODO: add the socket broadcast for notification of user login.
-									upstream ! ProtocolOk("registration", token._id)
-								}
+								} yield upstream ! ProtocolOk("registration", token._id)
+								
 							case Some(_) =>
 								val msg = "A user with your given account name already exists."
 								upstream ! ProtocolError("registration", msg)
@@ -40,7 +42,6 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 		 * Client has requested a login token.
 		 */
 		case LoginReq(name, password) =>
-			println("requesting login")
 			User.collection.find(Json.obj("name" -> name)).one[User].onSuccess {
 				case Some(user) => 
 					if(BCrypt.checkpw(password, user.password)){
@@ -59,7 +60,6 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 		 * Client has requested a token wipe for its account.
 		 */
 		case LogoutReq(tokens) =>
-			println("requesting logout")
 			User.fromTokens(tokens, ip).onSuccess {
 				case Some(user) =>
 					Token.collection.remove(Json.obj("userId" -> user._id)).foreach { _ =>
@@ -82,10 +82,22 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 					upstream ! ProtocolError("identity", msg)
 			}
 			
-		case RoomReq(tokens, name: String) =>
-			println("requesting access to room")
-		case ChatReq(tokens, room: String, content: String) =>
-			println(s"requesting to send chat message to room $room")
+		/**
+		 * Other requests are to be forwarded to the receptionist actor.
+		 */
+		case req =>
+			val recep = Akka.system.actorSelection("akka://application/user/receptionist")
+			recep ! (upstream, ip, req)
+			
 	}
 
+}
+
+/**
+ * Recommended practice seen here: 
+ * http://doc.akka.io/docs/akka/2.3.9/scala/actors.html
+ */
+object ClientConnection {
+	def props(upstream: ActorRef, ip: String) = 
+		Props(new ClientConnection(upstream, ip))
 }

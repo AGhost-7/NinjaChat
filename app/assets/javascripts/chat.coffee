@@ -1,70 +1,73 @@
 do ->
 	
-	urlArgs = ninja
-		.tokens
-		.get()
-		.map (s) -> 'tokens=' + s
-		.join("&")
-	
-	sock = new WebSocket("ws://" + location.host + "/socket?" + urlArgs);
-	
-	$out = $('#chat-out')
-	$in = $('#chat-in')
-	
-	$out.appendWithScrolling = (html) ->
-		isScrolledToBottom = $out[0].scrollHeight - $out[0].clientHeight <= $out[0].scrollTop + 1
-		$out.append(html)
-		if isScrolledToBottom
-			$out[0].scrollTop = $out[0].scrollHeight - $out[0].clientHeight
-			
 	$('#chat-in').keydown (e) ->
 		if e.keyCode == 13
-			message = 
-				userTokens: ninja.tokens.get()
+			ninja.socket.send(
+				resource: "chat-message"
+				tokens: ninja.tokens.get()
 				content: $(this).val()
-				
-			sock.send(JSON.stringify(message))
+				room: ninja.rooms.active()
+			)
 			
 			$(this).val('')
 			
 			e.preventDefault()
-			
-	window.onbeforeunload = (e) ->
-		sock.close()
-		
+	
 	###
 		~~ Socket Event Handlers ~~
 	###
 	
-	sock.onerror = (error) ->
-		$in.attr('disabled','true')
+	ninja.socket.onopen( ->
+		console.log('sending chat room request')
+		ninja.socket.send(
+			resource: "room",
+			room: "Global",
+			tokens: ninja.tokens.get()
+		)
+	)
+	
+	ninja.socket.on('room', 'ok', (obj) ->
 		html = 
-			'<p class="chat-error">' +
-				'Oh noes! A colony of monkeys just ran away with the socket connection.' +
+			'<p class="server-msg">' +
+				'Room joined.' +
 			'</p>'
-		$out.appendWithScrolling(html)
 		
+
+		ninja.rooms.add(obj.content)
+		ninja.rooms.active(obj.content)
+		ninja.rooms.append(obj.content, html)
 		
-	sock.onmessage = (event) ->
-		message = JSON.parse(event.data)
-		if message.notification
-			html = 
-				'<p class="server-msg">' +
-					message.notification +
-				'</p>'
-		else
-			html = 
-				'<p>' +
-					'<u>' + message.name + '</u> ' +
-					message.content +
-				'</p>'
-		
-		$out.appendWithScrolling(html)
-		
-		
-	sock.onopen = (e) ->
-		console.log('Socket connected!')
+	)
 	
+	ninja.socket.on('room', 'error', (msg)->
+		html = '<p class="chat-error">' + msg.reason + '</p>'
+		alert(msg.reason)
+	)
 	
+	ninja.socket.on('user-message', 'ok', (obj)->
+		html = 
+			'<p>' +
+				'<u>' + obj.userName + ':</u>&nbsp;' +
+				obj.content +
+			'</p>'
+		ninja.rooms.append(obj.room, html)
+	)
 	
+	ninja.socket.on('chat-message', 'error', (msg)->
+		html = 
+			'<p class="text-danger">' +
+				msg.reason +
+			'</p>'
+		rooms.append(msg.room, html)
+	)
+	
+	ninja.socket.on('notification', 'ok', (msg)->
+		html = 
+			'<p class="server-msg">' +
+				msg.content +
+			'</p>'
+		chatbox.append(msg.room, html)
+	)
+	
+
 	

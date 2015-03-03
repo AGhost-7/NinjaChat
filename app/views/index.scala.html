@@ -2,48 +2,58 @@
 
 @main("Ninja Chat") {
 	<style>
-	#chat-out { 
+	.chat-out { 
 		overflow-x: auto;
 	}
 	
 	.chat-error, .server-msg { font-weight: 600; }
 	.chat-error { color: red; }
 	.server-msg { color: #57BD7E; }
+	
 	/*redundant, but at least it works...*/
 	@@media(min-height: 400px) {
-		#chat-out { height: 190px; }
+		.chat-out { height: 190px; }
 	}
 	@@media(min-height: 500px) {
-		#chat-out { height: 240px; }
+		.chat-out { height: 240px; }
 	}
 	@@media(min-height: 600px) {
-		#chat-out { height: 340px; }
+		.chat-out { height: 340px; }
 	}
 	@@media(min-height: 700px) {
-		#chat-out { height: 440px; }
+		.chat-out { height: 440px; }
 	}
 	@@media(min-height: 800px) {
-		#chat-out { height: 540px; }
+		.chat-out { height: 540px; }
 	}
 	@@media(min-height: 900px) {
-		#chat-out { height: 640px; }
+		.chat-out { height: 640px; }
 	}
 	@@media(min-height: 1000px) {
-		#chat-out { height: 740px; }
+		.chat-out { height: 740px; }
 	}
 	@@media(min-height: 1100px) {
-		#chat-out { height: 840px; }
+		.chat-out { height: 840px; }
 	}
-	
+	.popover {
+		min-width:200px;
+	}
 	</style>
 	<div class="container">
-	
-		<h1>Hello <span id="name-span">newcomer!</span></h1>
+		<ul class="nav nav-pills" role="tablist" id="room-nav">
+		  <li role="presentation"><a href="#" id="add-room"><span class="glyphicon glyphicon-plus"></span></a></li>
+		</ul>
 		
-		<div class="well" id="chat-out" ></div>
+		<br>
+	
+		<div id="chat-out-container"></div>
 		
 		<textarea class="form-control" id="chat-in"></textarea>
-		<!--<script src='@routes.Assets.at("javascripts/chat.js")'></script> -->
 	</div>
+	<script src='@routes.Assets.at("javascripts/rooms.js")'></script>
+	<script src='@routes.Assets.at("javascripts/chatbox.js")'></script>
+	<script src='@routes.Assets.at("javascripts/chatnav.js")'></script>
+	<script src='@routes.Assets.at("javascripts/chat.js")'></script> 
+	
 	
 }
