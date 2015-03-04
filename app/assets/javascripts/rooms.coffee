@@ -24,9 +24,11 @@ do(ninja) ->
 			else if room != activeRoom
 				activeRoom = room
 				callback(room) for callback in listeners.active			
-		add:(room) ->
+		add: (room) ->
 			roomNames.push(room)
 			callback(room) for callback in listeners.add
+		roomNames: () ->
+		    roomNames
 		append: (room, html) ->
 			callback(room, html) for callback in listeners.append
 	

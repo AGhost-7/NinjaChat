@@ -19,12 +19,19 @@ do(ninja) ->
 		content: roomAddHtml
 	).on('shown.bs.popover', () ->
 		$('#join-room-ok').click () ->
-			$('#add-room').popover('hide')
-			ninja.socket.send(
-				resource: 'room'
-				room: $('#join-room-input').val()
-				tokens: ninja.tokens.get()
-			)
+				$in = $('#join-room-input')
+				room = $in.val()
+				rooms = ninja.rooms.roomNames()
+				console.log(rooms)
+				if room == undefined or room == '' or rooms.indexOf(room) > -1
+					$in.parent().addClass('has-error')
+				else
+					$('#add-room').popover('hide')
+					ninja.socket.send(
+						resource: 'room'
+						room: $('#join-room-input').val()
+						tokens: ninja.tokens.get()
+					)
 			
 	)
 	
