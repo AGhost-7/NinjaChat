@@ -12,27 +12,30 @@ do(ninja) ->
 				'<button class="btn btn-primary" id="join-room-ok">Ok</button>' +
 			'</span>' +
 		'</div>' 
-		
-	$('#add-room').popover(
+	
+	
+	$('#add-room')
+	.click (e) ->
+		e.preventDefault()
+	.popover(
 		html: true
 		placement: 'bottom'
 		content: roomAddHtml
-	).on('shown.bs.popover', () ->
-		$('#join-room-ok').click () ->
-				$in = $('#join-room-input')
-				room = $in.val()
-				rooms = ninja.rooms.roomNames()
-				console.log(rooms)
-				if room == undefined or room == '' or rooms.indexOf(room) > -1
-					$in.parent().addClass('has-error')
-				else
-					$('#add-room').popover('hide')
-					ninja.socket.send(
-						resource: 'room'
-						room: $('#join-room-input').val()
-						tokens: ninja.tokens.get()
-					)
+	).on('shown.bs.popover', (e) ->
+		$('#join-room-ok').click (e) ->
+			$in = $('#join-room-input')
+			room = $in.val()
+			rooms = ninja.rooms.roomNames()
 			
+			if room == undefined or room == '' or rooms.indexOf(room) > -1
+				$in.parent().addClass('has-error')
+			else
+				$('#add-room').popover('hide')
+				ninja.socket.send(
+					resource: 'room'
+					room: $('#join-room-input').val()
+					tokens: ninja.tokens.get()
+				)
 	)
 	
 	ninja.rooms.on('add', (roomName) ->
@@ -41,7 +44,8 @@ do(ninja) ->
 				'<a href="#">' + roomName + ' <span class="badge" data-unread=0></span></a>' + 
 			'</li>'
 		$plus.before(html)
-		$room(roomName).click ()->
+		$room(roomName).click (e)->
+			e.preventDefault()
 			ninja.rooms.active(roomName)
 	)
 	

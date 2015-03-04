@@ -106,6 +106,10 @@ object ProtocolMsg {
 	val identityReqRead = Json
 			.reads[IdentityReq]
 			.typeHint("resource" -> "identity")
+			
+	val disconnectReqRead = Json
+		.reads[DisconnectReq]
+		.typeHint("resource" -> "disconnect")
 	
 	/**
 	 * This is the final formatter which will be executed automatically at the
@@ -121,9 +125,7 @@ object ProtocolMsg {
 			case "room" => roomReqRead.map(identity)
 			case "identity" => identityReqRead.map(identity)
 			case "ping" => Reads[ProtocolMsg] { _ => JsSuccess(Ping) }
-			case "disconnect" => Reads[ProtocolMsg] { js =>
-				JsSuccess(DisconnectReq((js \ "room").asOpt[String]))
-			}
+			case "disconnect" => disconnectReqRead.map(identity)
 			case _ => Reads { _ => JsError("Format is invalid.") }
 		},
 		Writes {
@@ -164,7 +166,7 @@ case object Ping extends ProtocolMsg
  */
 
 // If Option is None, then disconnect from all rooms.
-case class DisconnectReq(room: Option[String]) extends ProtocolMsg
+case class DisconnectReq(tokens: List[String], room: Option[String]) extends ProtocolMsg
 
 case class RegistrationReq(name: String, password: String) extends ProtocolMsg 
 

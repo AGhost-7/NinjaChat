@@ -4,7 +4,11 @@ import akka.actor._
 import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-class Room() extends Actor {
+
+case class LoginNotification(upstream: ActorRef, name: String)
+case class LogoutNotification(upstream: ActorRef, name: String)
+
+class Room(name: String) extends Actor {
 	
 	var refs = List[ActorRef]()
 	
@@ -14,7 +18,28 @@ class Room() extends Actor {
 	}
 	
 	def receive = {
+		
+		/** Whenever the user logs in, a notification to all rooms is sent to check
+		 *  if the user who just logged in is in in that room. A notification is sent to
+		 *  all clients in the room if the user exists in the room.
+		 */
+		case LoginNotification(upstream, userName) =>
+			if(refs.contains(upstream)) {
+				val notif = Notification(name, s"User $userName has just joined.")
+				refs
+					.filterNot { _ == upstream }
+					.foreach { _ ! notif }
+			}
 			
+		/** Same as above, but instead is for tracking logouts */
+		case LogoutNotification(upstream, userName) =>
+			if(refs.contains(upstream)){
+				val notif = Notification(name, s"User $userName has just left the room.")
+				refs
+					.filterNot { _ == upstream }
+					.foreach { _ ! notif }
+			}
+		
 		case Terminated(upstream) =>
 			refs = refs.filter { _ != upstream }
 			if(refs.isEmpty) context.stop(self)
@@ -38,7 +63,7 @@ class Room() extends Actor {
 			}
 		
 		/** Disconnect gracefully when possible */
-		case(upstream: ActorRef, _: String, DisconnectReq(_)) =>
+		case(upstream: ActorRef, _: String, DisconnectReq(tokens, rooms)) =>
 			refs = refs.filterNot { _ == upstream }
 			if(refs.isEmpty) context.stop(self)
 			
@@ -48,5 +73,5 @@ class Room() extends Actor {
 
 
 object Room {
-	def props() = Props(new Room())
+	def props(name: String) = Props(new Room(name))
 }

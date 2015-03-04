@@ -58,7 +58,7 @@ do ->
 			'<p class="text-danger">' +
 				msg.reason +
 			'</p>'
-		rooms.append(msg.room, html)
+		ninja.rooms.append(msg.room, html)
 	)
 	
 	ninja.socket.on('notification', 'ok', (msg)->
@@ -66,7 +66,7 @@ do ->
 			'<p class="server-msg">' +
 				msg.content +
 			'</p>'
-		chatbox.append(msg.room, html)
+		ninja.rooms.append(msg.room, html)
 	)
 	
 
