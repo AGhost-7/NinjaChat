@@ -106,3 +106,16 @@ do ->
 		
 		self
 	
+	naughtyChars =
+		"&": "&amp;"
+		"<": "&lt;"
+		">": "&gt"
+		'"': "&quot;"
+		"'": "&#39;"
+		"/": "&#x2F"
+	
+	ninja.escape = (text) ->
+		String(text).replace(/[&<>"'\/]/g, (c) ->
+			naughtyChars[c]
+		)
+	

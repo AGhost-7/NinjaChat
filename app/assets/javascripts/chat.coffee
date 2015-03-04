@@ -48,7 +48,7 @@ do ->
 		html = 
 			'<p>' +
 				'<u>' + obj.userName + ':</u>&nbsp;' +
-				obj.content +
+				ninja.escape(obj.content) +
 			'</p>'
 		ninja.rooms.append(obj.room, html)
 	)
