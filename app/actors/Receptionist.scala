@@ -63,6 +63,13 @@ class Receptionist() extends Actor {
 					upstream ! ProtocolOk("disconnect", "Room exited successfully.")
 				}
 			}
+		
+		case msg @ (upstream: ActorRef, ip: String, req @ ImageReq(_, room, _)) =>
+			rooms.get(room).fold {
+				upstream ! ProtocolError("image", "Image could not be sent to non-existent room.")
+			} { room =>
+				room ! msg
+			}
 			
 		case Terminated(room) =>
 			rooms

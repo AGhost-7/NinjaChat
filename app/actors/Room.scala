@@ -8,7 +8,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 case class LoginNotification(upstream: ActorRef, name: String)
 case class LogoutNotification(upstream: ActorRef, name: String)
 
-class Room(name: String) extends Actor {
+class Room(roomName: String) extends Actor {
 	
 	var refs = List[ActorRef]()
 	
@@ -25,7 +25,7 @@ class Room(name: String) extends Actor {
 		 */
 		case LoginNotification(upstream, userName) =>
 			if(refs.contains(upstream)) {
-				val notif = Notification(name, s"User $userName has just joined.")
+				val notif = Notification(roomName, s"User $userName has just joined.")
 				refs
 					.filterNot { _ == upstream }
 					.foreach { _ ! notif }
@@ -34,7 +34,7 @@ class Room(name: String) extends Actor {
 		/** Same as above, but instead is for tracking logouts */
 		case LogoutNotification(upstream, userName) =>
 			if(refs.contains(upstream)){
-				val notif = Notification(name, s"User $userName has just left the room.")
+				val notif = Notification(roomName, s"User $userName has just left the room.")
 				refs
 					.filterNot { _ == upstream }
 					.foreach { _ ! notif }
@@ -66,7 +66,13 @@ class Room(name: String) extends Actor {
 		case(upstream: ActorRef, _: String, DisconnectReq(tokens, rooms)) =>
 			refs = refs.filterNot { _ == upstream }
 			if(refs.isEmpty) context.stop(self)
-			
+		
+		/** Broadcast image to all in room. */
+		case (upstream: ActorRef, ip: String, ImageReq(tokens, _, image)) =>
+			User.nameOrAnon(tokens, ip).foreach { userName =>
+				val msg = ImageSubmission(userName, roomName, image)
+				refs.foreach { _ ! msg }
+			}
 	}
 
 }

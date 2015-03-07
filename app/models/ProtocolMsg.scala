@@ -55,8 +55,7 @@ object ProtocolMsg {
 		}
 	}
 	
-	/**
-	 * Server-to-client writes
+	/** Server-to-client writes
 	 */
 	
 	val userMessageWrite = Json
@@ -78,9 +77,12 @@ object ProtocolMsg {
 	val userIdentityWrite = Json
 			.writes[UserIdentity]
 			.typeHint("resource" -> "identity", "code" -> "ok")
+	
+	val imageSubmissionWrite = Json
+			.writes[ImageSubmission]
+			.typeHint("resource" -> "image", "code" -> "ok")
 			
-	/**
-	 * Client-to-server reads
+	/** Client-to-server reads
 	 */
 	
 	val registrationReqRead = Json
@@ -111,6 +113,10 @@ object ProtocolMsg {
 		.reads[DisconnectReq]
 		.typeHint("resource" -> "disconnect")
 	
+	val imageReqRead = Json
+		.reads[ImageReq]
+		.typeHint("resource" -> "image")
+	
 	/**
 	 * This is the final formatter which will be executed automatically at the
 	 * end/beginning of the pipe.
@@ -118,21 +124,22 @@ object ProtocolMsg {
 		
 	implicit def protocolMsgFormat: Format[ProtocolMsg] = Format(
 			(__ \ "resource").read[String].flatMap {
-			case "registration" => registrationReqRead.map(identity)
-			case "login" => loginReqRead.map(identity)
-			case "logout" => logoutReqRead.map(identity)
-			case "chat-message" => chatReqRead.map(identity)
-			case "room" => roomReqRead.map(identity)
-			case "identity" => identityReqRead.map(identity)
-			case "ping" => Reads[ProtocolMsg] { _ => JsSuccess(Ping) }
-			case "disconnect" => disconnectReqRead.map(identity)
-			case _ => Reads { _ => JsError("Format is invalid.") }
+				case "registration" => registrationReqRead.map(identity)
+				case "login" => loginReqRead.map(identity)
+				case "logout" => logoutReqRead.map(identity)
+				case "chat-message" => chatReqRead.map(identity)
+				case "room" => roomReqRead.map(identity)
+				case "identity" => identityReqRead.map(identity)
+				case "ping" => Reads[ProtocolMsg] { _ => JsSuccess(Ping) }
+				case "disconnect" => disconnectReqRead.map(identity)
+				case "image" => imageReqRead.map(identity)
+				case _ => Reads { _ => JsError("Format is invalid.") }
 		},
 		Writes {
 			case nt: Notification => notificationWrite.writes(nt)
 			case msg: UserMessage => userMessageWrite.writes(msg)
 			case err: ProtocolError => protocolErrorWrite.writes(err)
-			case ok: ProtocolOk => println("Writing ok...");protocolOkWrite.writes(ok)
+			case ok: ProtocolOk => protocolOkWrite.writes(ok)
 			case id: UserIdentity => userIdentityWrite.writes(id)
 			case Ping => 
 				val seq = Seq(
@@ -140,7 +147,9 @@ object ProtocolMsg {
 					("code", JsString("ok"))
 				)
 				JsObject(seq)
+			case img: ImageSubmission => imageSubmissionWrite.writes(img)
 			case _ => Json.obj("error" -> "Json writes not implemented.")
+			
 		}
 	)
 	
@@ -161,8 +170,8 @@ case object Ping extends ProtocolMsg
 
 /** Client-to-server definitions.
  * 
- * Implicit formats are stored in the Implicits package object in the Models 
- * file.
+ *  Implicit formats are stored in the Implicits package object in the Models 
+ *  file.
  */
 
 // If Option is None, then disconnect from all rooms.
@@ -180,8 +189,10 @@ case class ChatReq(tokens: List[String], room: String, content: String) extends 
 
 case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtocolMsg
 
-/** Server-to-client definitions.
- */
+/** Image is submitted using base64 format */
+case class ImageReq(tokens: List[String], room: String, content: String) extends ProtocolMsg
+
+/** Server-to-client definitions. */
 
 case class UserMessage(userName: String, room: String, content: String) extends ProtocolMsg
 
@@ -196,3 +207,5 @@ case class ProtocolError(resource: String, reason: String) extends ProtocolMsg
 case class ProtocolOk(resource: String, content: String) extends ProtocolMsg
 
 case class UserIdentity(name: String, tokens: Option[List[String]] = None) extends ProtocolMsg
+
+case class ImageSubmission(name: String, room: String, content: String) extends ProtocolMsg

@@ -69,5 +69,14 @@ do ->
 		ninja.rooms.append(msg.room, html)
 	)
 	
+	ninja.socket.on('image', 'ok', (msg) ->
+		html =
+			'<p>' +
+				'<u>' + msg.name + ':</u><br/>' +				
+				'<img src="' + msg.content + '">' +
+			'</p>'
+			
+		ninja.rooms.append(msg.room, html)
+	)
 
 	
