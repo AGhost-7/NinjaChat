@@ -13,8 +13,10 @@ import org.mindrot.jbcrypt.BCrypt
 import models._
 
 class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
-	
-	/** Receptionist actor is responsible for tracking all rooms int the app.
+
+	var username = User.anon
+
+	/** Receptionist actor is responsible for tracking all rooms in the app.
 	 */ 
 	def receptionist = 
 		Akka.system.actorSelection("akka://application/user/receptionist")
@@ -34,6 +36,7 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 									user <- User.insert(name, password)
 									token <- Token.generate(user, ip)
 								} yield {
+									username = user.name
 									upstream ! ProtocolOk("registration", token._id)
 									receptionist ! LoginNotification(upstream, name)
 								}
@@ -51,6 +54,7 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 					if(BCrypt.checkpw(password, user.password)){
 						// TODO :: add notification
 						Token.generate(user, ip).foreach { tkn =>
+							username = user.name
 							upstream ! ProtocolOk("login", tkn._id) 
 							receptionist ! LoginNotification(upstream, name)
 						}
@@ -68,6 +72,7 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 			User.fromTokens(tokens, ip).onSuccess {
 				case Some(user) =>
 					Token.collection.remove(Json.obj("userId" -> user._id)).foreach { _ =>
+						username = User.anon
 						upstream ! ProtocolOk("logout", "Logout successful.")
 						receptionist ! LogoutNotification(upstream, user.name)
 					}
@@ -81,8 +86,10 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 		case IdentityReq(tokens, _) =>
 			User.fromTokens(tokens, ip).onSuccess {
 				case Some(user) =>
+					username = user.name
 					upstream ! UserIdentity(user.name)
 				case None =>
+					username = User.anon
 					val msg = "Looks like you don't exist!"
 					upstream ! ProtocolError("identity", msg)
 			}
@@ -90,7 +97,7 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 		/** Other requests are to be forwarded to the receptionist actor.
 		 */
 		case req =>
-			receptionist ! (upstream, ip, req)
+			receptionist ! (upstream, username, req)
 			
 	}
 

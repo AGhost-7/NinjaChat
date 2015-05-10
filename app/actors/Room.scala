@@ -8,13 +8,13 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 case class LoginNotification(upstream: ActorRef, name: String)
 case class LogoutNotification(upstream: ActorRef, name: String)
 
-class Room(roomName: String) extends Actor {
-	
+class Room(roomName: String) extends Actor with ActorLogging {
+
+	// All users currently in the room
 	var refs = List[ActorRef]()
 	
 	override def preStart = {
-		println("Room created")
-		println(this.self.path)
+		log.info(s"Room $roomName created at path ${self.path}")
 	}
 	
 	def receive = {
@@ -45,22 +45,17 @@ class Room(roomName: String) extends Actor {
 			if(refs.isEmpty) context.stop(self)
 			
 		/** User sends a message directed at the users in a certain room. */
-		case (upstream: ActorRef, ip: String, ChatReq(tokens, roomName, content)) =>
-			User.nameOrAnon(tokens, ip).foreach { name =>
-				val msg = UserMessage(name, roomName, content)
-				refs.foreach { _ ! msg }
-			}
+		case (upstream: ActorRef, username: String, ChatReq(roomName, content)) =>
+			val msg = UserMessage(username, roomName, content)
+			refs.foreach { _ ! msg }
 			
 		/** User requests to receive messages */
-		case (upstream: ActorRef, ip: String, RoomReq(tokens, roomName)) =>
-			User.nameOrAnon(tokens, ip).foreach { name =>
-				println("name: " + name)
-				val msg = Notification(roomName, s"User $name has just joined.")
-				refs.foreach { _ ! msg }
-				refs = upstream :: refs
-				context.watch(upstream)
-				upstream ! ProtocolOk("room", roomName)
-			}
+		case (upstream: ActorRef, username: String, RoomReq(roomName)) =>
+			val msg = Notification(roomName, s"User $username has just joined.")
+			refs.foreach { _ ! msg }
+			refs = upstream :: refs
+			context.watch(upstream)
+			upstream ! ProtocolOk("room", roomName)
 		
 		/** Disconnect gracefully when possible */
 		case(upstream: ActorRef, _: String, DisconnectReq(tokens, rooms)) =>
@@ -68,11 +63,17 @@ class Room(roomName: String) extends Actor {
 			if(refs.isEmpty) context.stop(self)
 		
 		/** Broadcast image to all in room. */
-		case (upstream: ActorRef, ip: String, ImageReq(tokens, _, image)) =>
-			User.nameOrAnon(tokens, ip).foreach { userName =>
-				val msg = ImageSubmission(userName, roomName, image)
-				refs.foreach { _ ! msg }
-			}
+		case (upstream: ActorRef, username: String, ImageReq(id, part, room, data)) =>
+			val msg = ImageSubmission(username, id, part, room, data)
+			refs.foreach { _ ! msg }
+
+		/** Send data to initialize client buffer. */
+		case (upstream: ActorRef, username: String, ImageReqInit(id, room, parts)) =>
+			val msg = ImageSubmissionInit(username, id, room, parts)
+			refs.foreach { _ ! msg }
+
+		case huh =>
+			log.error("Un-tracked message received " + huh.toString())
 	}
 
 }

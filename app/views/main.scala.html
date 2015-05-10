@@ -9,10 +9,10 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
-		
+
 		@*<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>*@
-		
+
 		<style>
 		#nav-ok-btn {
 			margin-top: 24px;
@@ -37,10 +37,9 @@
 		</style>
 	</head>
 	<body>
-		
 		<nav class="navbar navbar-default">
 			<div class="container-fluid">
-				
+
 				<div class="navbar-header">
 					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse-div">
 						<span class="sr-only">Toggle navigation</span>
@@ -50,7 +49,7 @@
 					</button>
 					<a class="navbar-brand" href="@routes.Application.index">Ninja Chat</a>
 				</div>
-				
+
 				<div class="collapse navbar-collapse" id="navbar-collapse-div">
 					<ul class="nav navbar-nav navbar-right">
 						<li><a id="login-nav" data-toggle="collapse" href="#nav-input">Login</a></li>
@@ -58,14 +57,14 @@
 						<li class="hidden"><a id="logout-nav" href="#">Logout</a></li>
 					</ul>
 				</div>
-				
+
 				<!-- Collapsible forms -->
-				
+
 				<div class="collapse" id="nav-input">
 					<div class="well">
 						<span id="nav-alert-container"></span>
-						
-						
+
+
 						<div class="row">
 							<div class="col-sm-5">
 								<label>Name</label>
@@ -79,11 +78,11 @@
 								<button class="btn btn-default" id="nav-ok-btn">Ok</button>
 							</div>
 						</div>
-						
+
 					</div>
 				</div>
-				
-				
+
+
 			</div>
 		</nav>
 		<!--[if lte IE 9]>
@@ -91,18 +90,18 @@
 			This website uses modern technology which requires you to have a recent web browser.
 		</div>
 		<![endif]-->
-		
+
 		<script src='@routes.Assets.at("javascripts/ninja.js")'></script>
 		<script src='@routes.Assets.at("javascripts/login.js")'></script>
-		
+
 		@content
-		
+
 		<footer class="footer">
 				<p class="small">
-					<a href="https://github.com/AGhost-7/NinjaChat">Website Sources</a> - 
+					<a href="https://github.com/AGhost-7/NinjaChat">Website Sources</a> -
 					<a href="https://twitter.com/JonathanBoudre2">Follow me @@JonathanBoudre2</a>
 				</p>
 		</footer>
-		
+
 	</body>
 </html>

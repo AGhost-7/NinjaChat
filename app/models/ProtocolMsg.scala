@@ -1,5 +1,6 @@
 package models
 
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 import play.api.mvc.WebSocket.FrameFormatter
@@ -81,42 +82,49 @@ object ProtocolMsg {
 	val imageSubmissionWrite = Json
 			.writes[ImageSubmission]
 			.typeHint("resource" -> "image", "code" -> "ok")
+
+	val imageSubmissionInitWrite = Json
+		.writes[ImageSubmissionInit]
+		.typeHint("resource" -> "image-init", "code" -> "ok")
 			
 	/** Client-to-server reads
 	 */
 	
 	val registrationReqRead = Json
 			.reads[RegistrationReq]
-			.typeHint("resource" -> "registration")
+			//.typeHint("resource" -> "registration")
 		
 	val loginReqRead = Json
 			.reads[LoginReq]
-			.typeHint("resource" -> "login")
+			//.typeHint("resource" -> "login")
 		
 	val logoutReqRead = Json
 			.reads[LogoutReq]
-			.typeHint("resource" -> "logout")
+			//.typeHint("resource" -> "logout")
 		
 	val chatReqRead = Json
 			.reads[ChatReq]
-			.typeHint("resource" -> "chat-message")
+			//.typeHint("resource" -> "chat-message")
 		
 	val roomReqRead = Json
 			.reads[RoomReq]
-			.typeHint("resource" -> "room")
+			//.typeHint("resource" -> "room")
 	
 	val identityReqRead = Json
 			.reads[IdentityReq]
-			.typeHint("resource" -> "identity")
+			//.typeHint("resource" -> "identity")
 			
 	val disconnectReqRead = Json
 		.reads[DisconnectReq]
-		.typeHint("resource" -> "disconnect")
+		//.typeHint("resource" -> "disconnect")
 	
 	val imageReqRead = Json
 		.reads[ImageReq]
-		.typeHint("resource" -> "image")
-	
+		//.typeHint("resource" -> "image")
+
+	val imageInitReqRead = Json
+		.reads[ImageReqInit]
+
 	/**
 	 * This is the final formatter which will be executed automatically at the
 	 * end/beginning of the pipe.
@@ -133,6 +141,7 @@ object ProtocolMsg {
 				case "ping" => Reads[ProtocolMsg] { _ => JsSuccess(Ping) }
 				case "disconnect" => disconnectReqRead.map(identity)
 				case "image" => imageReqRead.map(identity)
+				case "image-init" => imageInitReqRead.map(identity)
 				case _ => Reads { _ => JsError("Format is invalid.") }
 		},
 		Writes {
@@ -148,6 +157,7 @@ object ProtocolMsg {
 				)
 				JsObject(seq)
 			case img: ImageSubmission => imageSubmissionWrite.writes(img)
+			case imgInit: ImageSubmissionInit => imageSubmissionInitWrite.writes(imgInit)
 			case _ => Json.obj("error" -> "Json writes not implemented.")
 			
 		}
@@ -156,10 +166,20 @@ object ProtocolMsg {
 	implicit def protocolMsgFrameFormatter: FrameFormatter[ProtocolMsg] = 
 		FrameFormatter.jsonFrame.transform(
       protocolMsg => Json.toJson(protocolMsg),
-      json => Json.fromJson[ProtocolMsg](json).fold(
-        invalid => throw new RuntimeException("Bad client event on WebSocket: " + invalid),
-        valid => valid
-      )
+      json => Json.fromJson[ProtocolMsg](json).fold({ invalid =>
+				val msg: String = invalid.map { case (path, errors) =>
+					val errList = errors.map { error =>
+							s" - ${error.message}(${error.args.mkString(",")})"
+					}.mkString("\n")
+					s"""Path: $path
+						 |Errors:
+						 |$errList
+					 """.stripMargin
+				}.mkString("\n")
+				throw new RuntimeException("Bad client event on WebSocket: \n" +
+					msg + "\n" +
+					"Json submitted: " + json.toString())
+			}, identity)
     )
 	
 }
@@ -183,14 +203,16 @@ case class LoginReq(name: String, password: String) extends ProtocolMsg
 
 case class LogoutReq(tokens: List[String]) extends ProtocolMsg 
 
-case class RoomReq(tokens: List[String], room: String) extends ProtocolMsg 
+case class RoomReq(room: String) extends ProtocolMsg
 
-case class ChatReq(tokens: List[String], room: String, content: String) extends ProtocolMsg 
+case class ChatReq(room: String, content: String) extends ProtocolMsg
 
 case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtocolMsg
 
 /** Image is submitted using base64 format */
-case class ImageReq(tokens: List[String], room: String, content: String) extends ProtocolMsg
+case class ImageReq(id: String, part: Int, room: String, data: String) extends ProtocolMsg
+
+case class ImageReqInit(id: String, room: String, parts: Int) extends ProtocolMsg
 
 /** Server-to-client definitions. */
 
@@ -208,4 +230,9 @@ case class ProtocolOk(resource: String, content: String) extends ProtocolMsg
 
 case class UserIdentity(name: String, tokens: Option[List[String]] = None) extends ProtocolMsg
 
-case class ImageSubmission(name: String, room: String, content: String) extends ProtocolMsg
+//case class ImageSubmission(name: String, room: String, content: String) extends ProtocolMsg
+
+/** The client is sent an initial message to prepare for the image to be submitted */
+case class ImageSubmissionInit(userName: String, id: String, room: String, parts: Int) extends ProtocolMsg
+
+case class ImageSubmission(name: String, id: String, part: Int, room: String, data: String) extends ProtocolMsg
