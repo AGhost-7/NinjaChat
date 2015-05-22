@@ -24,6 +24,9 @@ import play.api.libs.functional.syntax._
 
 sealed trait ProtocolMsg
 
+sealed abstract class ProtoReq extends ProtocolMsg
+sealed abstract class ProtoRes extends ProtocolMsg
+
 object ProtocolMsg {
 	
 	implicit class readsAdhocks[A](rd: Reads[A]){
@@ -195,44 +198,44 @@ case object Ping extends ProtocolMsg
  */
 
 // If Option is None, then disconnect from all rooms.
-case class DisconnectReq(tokens: List[String], room: Option[String]) extends ProtocolMsg
+case class DisconnectReq(tokens: List[String], room: Option[String]) extends ProtoReq
 
-case class RegistrationReq(name: String, password: String) extends ProtocolMsg 
+case class RegistrationReq(name: String, password: String) extends ProtoReq
 
-case class LoginReq(name: String, password: String) extends ProtocolMsg
+case class LoginReq(name: String, password: String) extends ProtoReq
 
-case class LogoutReq(tokens: List[String]) extends ProtocolMsg 
+case class LogoutReq(tokens: List[String]) extends ProtoReq
 
-case class RoomReq(room: String) extends ProtocolMsg
+case class RoomReq(room: String) extends ProtoReq
 
-case class ChatReq(room: String, content: String) extends ProtocolMsg
+case class ChatReq(room: String, content: String) extends ProtoReq
 
-case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtocolMsg
+case class IdentityReq(tokens: List[String], withAllTokens: Option[Boolean] = None) extends ProtoReq
 
 /** Image is submitted using base64 format */
-case class ImageReq(id: String, part: Int, room: String, data: String) extends ProtocolMsg
+case class ImageReq(id: String, part: Int, room: String, data: String) extends ProtoReq
 
-case class ImageReqInit(id: String, room: String, parts: Int) extends ProtocolMsg
+case class ImageReqInit(id: String, room: String, parts: Int) extends ProtoReq
 
 /** Server-to-client definitions. */
 
-case class UserMessage(userName: String, room: String, content: String) extends ProtocolMsg
+case class UserMessage(userName: String, room: String, content: String) extends ProtoRes
 
 // e.g., User "x" logs into the room.
-case class Notification(room: String, content: String) extends ProtocolMsg 
+case class Notification(room: String, content: String) extends ProtoRes
 
 //Resource will correspond to the code the client sent. Reason
 //is the exact GUI response that the user will see.
-case class ProtocolError(resource: String, reason: String) extends ProtocolMsg 
+case class ProtocolError(resource: String, reason: String) extends ProtoRes
 
 //Ok response will return a result, for example a token for the login.
-case class ProtocolOk(resource: String, content: String) extends ProtocolMsg
+case class ProtocolOk(resource: String, content: String) extends ProtoRes
 
-case class UserIdentity(name: String, tokens: Option[List[String]] = None) extends ProtocolMsg
+case class UserIdentity(name: String, tokens: Option[List[String]] = None) extends ProtoRes
 
 //case class ImageSubmission(name: String, room: String, content: String) extends ProtocolMsg
 
 /** The client is sent an initial message to prepare for the image to be submitted */
-case class ImageSubmissionInit(userName: String, id: String, room: String, parts: Int) extends ProtocolMsg
+case class ImageSubmissionInit(userName: String, id: String, room: String, parts: Int) extends ProtoRes
 
-case class ImageSubmission(name: String, id: String, part: Int, room: String, data: String) extends ProtocolMsg
+case class ImageSubmission(name: String, id: String, part: Int, room: String, data: String) extends ProtoRes

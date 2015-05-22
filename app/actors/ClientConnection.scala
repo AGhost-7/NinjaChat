@@ -1,6 +1,6 @@
 package actors
 
-import akka.actor.{Props, ActorRef, Actor}
+import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 
 import play.api.Play.current
 
@@ -10,9 +10,12 @@ import play.api.libs.concurrent.Akka
 
 import org.mindrot.jbcrypt.BCrypt
 
+
 import models._
 
-class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
+class ClientConnection(upstream: ActorRef, ip: String)
+		extends Actor
+		with ActorLogging {
 
 	var username = User.anon
 
@@ -20,6 +23,11 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 	 */ 
 	def receptionist = 
 		Akka.system.actorSelection("akka://application/user/receptionist")
+
+	override def preStart = {
+		println(s"println - Connection for ip $ip initialized.")
+		log.info(s"Connection for ip $ip initialized.")
+	}
 	
 	def receive = {
 		
@@ -93,7 +101,12 @@ class ClientConnection(upstream: ActorRef, ip: String) extends Actor {
 					val msg = "Looks like you don't exist!"
 					upstream ! ProtocolError("identity", msg)
 			}
-			
+
+		/** Any actor who sends a response to this actor back will then be forwarded
+			* to the upstream actor.
+			*/
+		//case res: ProtoRes => upstream ! res
+
 		/** Other requests are to be forwarded to the receptionist actor.
 		 */
 		case req =>

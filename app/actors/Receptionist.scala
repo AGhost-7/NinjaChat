@@ -19,7 +19,7 @@ class Receptionist() extends Actor with ActorLogging {
 	val rooms = MMap[String, ActorRef]()
 	
 	override def preStart = {
-		println(this.self.path)
+		log.info(s"Receptionist created as: ${this.self.path}")
 	}
 	
 	def receive = {
@@ -46,7 +46,7 @@ class Receptionist() extends Actor with ActorLogging {
 			rooms.get(roomName).fold {
 				upstream ! ProtocolError("chat", "Room does not exist.")
 			} { room =>
-				println(s"sending chat message to room $roomName for processing.")
+				log.info(s"sending chat message to room $roomName for processing.")
 				room ! msg
 			}
 		

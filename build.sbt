@@ -12,5 +12,8 @@ libraryDependencies ++= Seq(
 	cache,
 	ws,
 	"org.mindrot" % "jbcrypt" % "0.3m",
-	"org.reactivemongo" %% "play2-reactivemongo" % "0.10.5.0.akka23"
+	"org.reactivemongo" %% "play2-reactivemongo" % "0.10.5.0.akka23",
+	"com.typesafe.akka" %% "akka-slf4j" % "2.3.11"
 )
+
+doc in Compile <<= target.map(_ / "none")
