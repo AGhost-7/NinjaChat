@@ -16,4 +16,6 @@ libraryDependencies ++= Seq(
 	"com.typesafe.akka" %% "akka-slf4j" % "2.3.11"
 )
 
+//libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.3"
+
 doc in Compile <<= target.map(_ / "none")

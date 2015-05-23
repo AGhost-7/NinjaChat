@@ -31,8 +31,7 @@ class ClientConnection(upstream: ActorRef, ip: String)
 	
 	def receive = {
 		
-		/** Client has requested a registration for a new account.
-		 */
+		/** Client has requested a registration for a new account. */
 		case RegistrationReq(name, password) => 
 			User.findError(name, password) match {
 				case Some(error) => 
@@ -54,8 +53,7 @@ class ClientConnection(upstream: ActorRef, ip: String)
 					}
 			}
 		
-		/** Client has requested a login token.
-		 */
+		/** Client has requested a login token. */
 		case LoginReq(name, password) =>
 			User.collection.find(Json.obj("name" -> name)).one[User].onSuccess {
 				case Some(user) => 
@@ -74,8 +72,7 @@ class ClientConnection(upstream: ActorRef, ip: String)
 							"User name does not exist in database.")
 			}
 			
-		/** Client has requested a token wipe for its account.
-		 */
+		/** Client has requested a token wipe for its account. */
 		case LogoutReq(tokens) =>
 			User.fromTokens(tokens, ip).onSuccess {
 				case Some(user) =>
@@ -89,8 +86,7 @@ class ClientConnection(upstream: ActorRef, ip: String)
 					upstream ! ProtocolError("logout", msg)
 			}
 		
-		/** Client wishes to determine what name it will display to the user.
-		 */
+		/** Client wishes to determine what name it will display to the user. */
 		case IdentityReq(tokens, _) =>
 			User.fromTokens(tokens, ip).onSuccess {
 				case Some(user) =>
@@ -107,11 +103,11 @@ class ClientConnection(upstream: ActorRef, ip: String)
 			*/
 		//case res: ProtoRes => upstream ! res
 
-		/** Other requests are to be forwarded to the receptionist actor.
-		 */
-		case req =>
-			receptionist ! (upstream, username, req)
-			
+		/** Other requests are to be forwarded to the receptionist actor. */
+		case req: ProtoReq =>
+			receptionist ! WebsocketRequest(req, upstream, username)
+			//receptionist ! (upstream, username, req)
+
 	}
 
 }

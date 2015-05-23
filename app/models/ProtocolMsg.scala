@@ -22,30 +22,13 @@ import play.api.libs.functional.syntax._
 // - reply with new token.
 // - deny access(for login and registration), with reason why being given.
 
+/** Represents a resource being requested/sent over websockets */
 sealed trait ProtocolMsg
 
-sealed abstract class ProtoReq extends ProtocolMsg
-sealed abstract class ProtoRes extends ProtocolMsg
+sealed trait ProtoReq extends ProtocolMsg
+sealed trait ProtoRes extends ProtocolMsg
 
 object ProtocolMsg {
-	
-	implicit class readsAdhocks[A](rd: Reads[A]){
-		def typeHint(kv: (String, String)) = {
-			val (field, value) = kv
-			
-			val rd2 = Reads[JsValue] { js =>
-				(js \ field).asOpt[String] match {
-					case Some(v) =>
-						if(v == value) JsSuccess(js)
-						else JsError("Type hint mismatch.")
-					case None =>
-						JsError("Type hint not defined.")
-				}	
-			}
-		
-			rd.compose(rd2)
-		}
-	}
 	
 	implicit class writesAdhocks[A](wr: OWrites[A]){
 		def typeHint(kvs: (String, String)*) = wr.transform { js: JsValue =>
@@ -95,35 +78,27 @@ object ProtocolMsg {
 	
 	val registrationReqRead = Json
 			.reads[RegistrationReq]
-			//.typeHint("resource" -> "registration")
 		
 	val loginReqRead = Json
 			.reads[LoginReq]
-			//.typeHint("resource" -> "login")
 		
 	val logoutReqRead = Json
 			.reads[LogoutReq]
-			//.typeHint("resource" -> "logout")
 		
 	val chatReqRead = Json
 			.reads[ChatReq]
-			//.typeHint("resource" -> "chat-message")
 		
 	val roomReqRead = Json
 			.reads[RoomReq]
-			//.typeHint("resource" -> "room")
 	
 	val identityReqRead = Json
 			.reads[IdentityReq]
-			//.typeHint("resource" -> "identity")
 			
 	val disconnectReqRead = Json
 		.reads[DisconnectReq]
-		//.typeHint("resource" -> "disconnect")
 	
 	val imageReqRead = Json
 		.reads[ImageReq]
-		//.typeHint("resource" -> "image")
 
 	val imageInitReqRead = Json
 		.reads[ImageReqInit]
@@ -189,7 +164,7 @@ object ProtocolMsg {
 
 /** Two way objects...
  */
-case object Ping extends ProtocolMsg
+case object Ping extends ProtocolMsg with ProtoReq with ProtoRes
 
 /** Client-to-server definitions.
  * 
@@ -217,7 +192,10 @@ case class ImageReq(id: String, part: Int, room: String, data: String) extends P
 
 case class ImageReqInit(id: String, room: String, parts: Int) extends ProtoReq
 
-/** Server-to-client definitions. */
+/** Server-to-client definitions.
+	*
+	* These are the responses that the server will send to the server.
+	*/
 
 case class UserMessage(userName: String, room: String, content: String) extends ProtoRes
 
