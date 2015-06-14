@@ -28,5 +28,5 @@ window.ninja.rooms =
 		callback(room) for callback in listeners.add
 	roomNames: () ->
 	    roomNames
-	append: (room, html) ->
-		callback(room, html) for callback in listeners.append
+	append: (room, arg) ->
+		callback(room, arg) for callback in listeners.append

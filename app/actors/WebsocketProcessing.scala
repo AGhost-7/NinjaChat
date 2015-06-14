@@ -5,7 +5,7 @@ import models._
 /** Some information should be added to the "context" instead of having to pass
 	* it around with tuples.
 	*/
-case class WebsocketRequest[+R <: ProtoReq](req: R, upstream: ActorRef, name: String)
+case class WebsocketRequest[+R <: ProtoReq](req: R, connection: ActorRef, upstream: ActorRef, name: String)
 
 trait WebsocketProcessing { act: Actor =>
 
@@ -18,6 +18,7 @@ trait WebsocketProcessing { act: Actor =>
 		protected var upstream: ActorRef = _
 		protected var name: String = _
 		protected var request: WebsocketRequest[_] = _
+		protected var connection: ActorRef = _
 
 		protected val process: PartialFunction[ProtoReq, Unit]
 
@@ -36,6 +37,9 @@ trait WebsocketProcessing { act: Actor =>
 			processor.upstream = cr.upstream
 			processor.name = cr.name
 			processor.request = cr
+			processor.connection = cr.connection
+
+			println("socket request for name: " + name)
 			process(cr.req)
 		}
 

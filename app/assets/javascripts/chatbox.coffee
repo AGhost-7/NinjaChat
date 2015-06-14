@@ -11,10 +11,15 @@ ninja.rooms.on('active', (roomName) ->
 	$room(roomName).removeClass('hidden')
 )
 
-ninja.rooms.on('append', (room, html) ->
+ninja.rooms.on('append', (room, arg) ->
 	$out = $room(room)
 	isScrolledToBottom = $out[0].scrollHeight - $out[0].clientHeight <= $out[0].scrollTop + 1
-	$out.append(html)
+
+	if typeof arg == 'function'
+		arg($out)
+	else
+		$out.append(arg)
+
 	if isScrolledToBottom
 		$out[0].scrollTop = $out[0].scrollHeight - $out[0].clientHeight
 )

@@ -197,7 +197,7 @@ case class ImageReqInit(id: String, room: String, parts: Int) extends ProtoReq
 	* These are the responses that the server will send to the server.
 	*/
 
-case class UserMessage(userName: String, room: String, content: String) extends ProtoRes
+case class UserMessage(clientId: String, userName: String, room: String, content: String) extends ProtoRes
 
 // e.g., User "x" logs into the room.
 case class Notification(room: String, content: String) extends ProtoRes

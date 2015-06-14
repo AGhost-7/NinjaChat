@@ -68,12 +68,22 @@ ninja.socket.on('notification', 'ok', (msg)->
 )
 
 imageBuffers = new Object
+
 ninja.socket.on('image-init', 'ok', ({room, id, userName, parts}) ->
 	imageBuffers[room] ?= new Object
 	imageBuffers[room][id] =
 		userName: userName
 		chunks: new Array(parts)
 )
+
+cappedWidth = (width, height, maxWidth) ->
+
+	if width > maxWidth
+		height = height * ((width - maxWidth) / width)
+		console.log(maxWidth, height)
+		width: maxWidth, height: height
+	else
+		width: width, height: height
 
 ninja.socket.on('image', 'ok', ({id, data, room, part}) ->
 	buffer = imageBuffers[room][id]
@@ -84,14 +94,46 @@ ninja.socket.on('image', 'ok', ({id, data, room, part}) ->
 			if buffer.chunks[i++] == undefined
 				throw 'Download was not completed.'
 
-		image = buffer.chunks.join("")
-
+		# I need to prevent XXS...
+		#image = new Image
+		#image.src = buffer.chunks.join("")
 		html =
 			'<p>' +
 				'<u>' + buffer.userName + ':</u><br/>' +
-				'<img src="' + image + '">' +
+				'<img/>' +
 			'</p>'
+		###
+		{width, height} = cappedWidth(
+			image.naturalWidth,
+			image.naturalHeight,
+			maxWidth)
+		###
+		ninja.rooms.append(room, ($out) ->
+			$html = $(html)
+			$out.append($html)
+			#$img = $html.find('img')
 
-		ninja.rooms.append(room, html)
+			$img = $html
+				.find('img')
+				.attr('src', buffer.chunks.join(""))
+			{width, height} = cappedWidth(
+				$img.width(),
+				$img.height(),
+				$('.chat-out').width())
+
+			$img.height(height)
+			$img.width(width)
+			console.log(
+				'max width: ', $('.chat-out').width(),
+				'width: ', width,
+				'height: ', height,
+				'image width: ', $img.width(),
+				'image height: ', $img.height())
+		)
+
+
+
+
+
 
 )

@@ -55,7 +55,7 @@ ninja.rooms.on('active', (roomName)->
 	$r.find('span').text('').data('unread', 0)
 )
 
-ninja.rooms.on('append', (roomName, html) ->
+ninja.rooms.on('append', (roomName) ->
 	if roomName != ninja.rooms.active()
 		$r = $room(roomName)
 		$span = $r.find('span')
