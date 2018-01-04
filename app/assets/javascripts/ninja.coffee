@@ -6,7 +6,7 @@ ninja = window.ninja = {}
 	~~ WebSocket Abstractions ~~
 ###
 
-sock = new WebSocket("ws://" + location.host + "/socket")
+sock = new WebSocket("wss://" + location.host + "/socket")
 
 lastMessageSent = undefined
 
